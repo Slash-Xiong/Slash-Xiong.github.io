@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>楼宇列表 | 智慧楼宇管理系统</title>
+    
+    <!-- 样式资源 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans SC', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#64748B',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                        dark: '#1E293B',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义样式 -->
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .table-row-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .status-badge::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            100% { left: 100%; }
+        }
+        
+        .modal-enter {
+            animation: modalEnter 0.3s ease-out;
+        }
+        
+        @keyframes modalEnter {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .tab-active {
+            background-color: #3B82F6;
+            color: white;
+        }
+        
+        .tab-inactive {
+            background-color: #F1F5F9;
+            color: #64748B;
+        }
+        
+        .tab-inactive:hover {
+            background-color: #E2E8F0;
+        }
+        
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+        
+        .action-btn {
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .dynamic-field {
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .read-only-field {
+            background-color: #f1f5f9 !important;
+            cursor: not-allowed;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body class="text-slate-800 antialiased">
+    <!-- 顶部导航栏 -->
+    <nav class="glass-effect sticky top-0 z-40 border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo 和系统名称 -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                        <i class="fas fa-building text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-800 tracking-tight">智慧楼宇管理</h1>
+                        <p class="text-xs text-slate-500">Smart Building Management System</p>
+                    </div>
+                </div>
+                
+                <!-- 操作按钮组 -->
+                <div class="flex items-center gap-3">
+                    <!-- 批量导入按钮 -->
+                    <button onclick="openImportModal()" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-medium transition-all shadow-sm hover:shadow-md flex items-center gap-2">
+                        <i class="fas fa-file-import text-slate-600"></i>
+                        <span>批量导入</span>
+                    </button>
+                    
+                    <!-- 新增按钮 - 移除下拉交互，点击直接弹出新增弹窗 -->
+                    <button onclick="openModal('room')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        <span>新增</span>
+                    </button>
+                    
+                    <!-- 用户头像 -->
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white font-semibold cursor-pointer">
+                        AD
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- 统计卡片区域 - 移除副标题 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 fade-in">
+            <!-- 卡片1：总楼幢数 -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">总楼幢数</p>
+                        <h3 class="text-3xl font-bold text-slate-800" id="totalBuildings">3</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                        <i class="fas fa-building text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 卡片2：总楼层数 -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">总楼层数</p>
+                        <h3 class="text-3xl font-bold text-slate-800" id="totalFloors">11</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                        <i class="fas fa-layer-group text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 卡片3：总房间数 -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">总房间数</p>
+                        <h3 class="text-3xl font-bold text-slate-800" id="totalRooms">24</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                        <i class="fas fa-door-open text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 卡片4：总牙椅位数 -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">总牙椅位数</p>
+                        <h3 class="text-3xl font-bold text-slate-800" id="totalDentalChairs">12</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center text-rose-600">
+                        <i class="fas fa-chair-medical text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 筛选和搜索栏 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6 fade-in" style="animation-delay: 0.1s">
+            <div class="flex flex-col lg:flex-row gap-4 justify-between items-center">
+                <div class="flex flex-wrap gap-3 w-full lg:w-auto">
+                    <select id="campusFilter" onchange="handleCampusFilterChange()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]">
+                        <option value="">所有院区</option>
+                        <option value="主院区">主院区</option>
+                        <option value="东院区">东院区</option>
+                        <option value="西院区">西院区</option>
+                    </select>
+                    <select id="buildingFilter" onchange="handleBuildingFilterChange()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]">
+                        <option value="">所有楼幢</option>
+                    </select>
+                    <select id="floorFilter" onchange="filterData()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]">
+                        <option value="">所有楼层</option>
+                    </select>
+                    <select id="typeFilter" onchange="filterData()" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]">
+                        <option value="">所有类型</option>
+                        <option value="办公室">办公室</option>
+                        <option value="会议室">会议室</option>
+                        <option value="实验室">实验室</option>
+                        <option value="机房">机房</option>
+                        <option value="储藏室">储藏室</option>
+                    </select>
+                </div>
+                <div class="relative w-full lg:w-96">
+                    <input type="text" id="searchInput" onkeyup="filterData()" placeholder="搜索房间名称、ID..." 
+                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                    <i class="fas fa-search absolute left-3.5 top-3 text-slate-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden fade-in" style="animation-delay: 0.2s">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200">
+                            <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">院区</th>
+                            <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">楼幢</th>
+                            <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">楼层</th>
+                            <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">房间名称</th>
+                            <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">房间类型</th>
+                            <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">房间ID</th>
+                            <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right w-32">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roomTableBody" class="divide-y divide-slate-100">
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页控件 -->
+            <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
+                <div class="text-sm text-slate-600">
+                    显示 <span id="showingStart">1</span> 到 <span id="showingEnd">10</span> 条，共 <span id="totalCount">24</span> 条
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="changePage(-1)" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm" id="prevBtn">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="flex gap-1" id="paginationNumbers">
+                    </div>
+                    <button onclick="changePage(1)" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm" id="nextBtn">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 新增模态框（支持三种类型） -->
+    <div id="addModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg modal-enter overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800" id="addModalTitle">新增</h3>
+                <button onclick="closeAddModal()" class="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-slate-500"></i>
+                </button>
+            </div>
+            
+            <!-- 标签切换 -->
+            <div class="px-6 pt-4 flex gap-2 mb-2">
+                <button onclick="switchAddType('building')" id="tab-building" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all tab-inactive">
+                    <i class="fas fa-building mr-2"></i>楼幢
+                </button>
+                <button onclick="switchAddType('floor')" id="tab-floor" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all tab-inactive">
+                    <i class="fas fa-layer-group mr-2"></i>楼层
+                </button>
+                <button onclick="switchAddType('room')" id="tab-room" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all tab-inactive">
+                    <i class="fas fa-door-open mr-2"></i>房间
+                </button>
+            </div>
+
+            <form id="addForm" onsubmit="saveAdd(event)" class="p-6 space-y-4">
+                <input type="hidden" id="addType" value="room">
+                
+                <!-- 楼幢表单 -->
+                <div id="form-building" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">所属院区 <span class="text-red-500">*</span></label>
+                        <select id="buildingCampus" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            <option value="主院区">主院区</option>
+                            <option value="东院区">东院区</option>
+                            <option value="西院区">西院区</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">楼幢名称 <span class="text-red-500">*</span></label>
+                        <input type="text" id="buildingName" required placeholder="例如：D座、科研楼" 
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">楼幢排序</label>
+                        <input type="number" id="buildingSort" min="1" placeholder="例如：1、2、3" 
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                </div>
+
+                <!-- 楼层表单 -->
+                <div id="form-floor" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">所属院区 <span class="text-red-500">*</span></label>
+                        <select id="floorCampus" required onchange="updateBuildingSelect()" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            <option value="主院区">主院区</option>
+                            <option value="东院区">东院区</option>
+                            <option value="西院区">西院区</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">所属楼幢 <span class="text-red-500">*</span></label>
+                        <select id="floorBuilding" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">楼层名称 <span class="text-red-500">*</span></label>
+                        <input type="text" id="floorName" required placeholder="例如：6F、地下1层" 
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">楼层排序</label>
+                        <input type="number" id="floorSort" min="1" placeholder="例如：1、2、3" 
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                </div>
+
+                <!-- 房间表单 -->
+                <div id="form-room" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">院区 <span class="text-red-500">*</span></label>
+                            <select id="roomCampus" required onchange="updateRoomBuildingSelect()" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                                <option value="主院区">主院区</option>
+                                <option value="东院区">东院区</option>
+                                <option value="西院区">西院区</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">楼幢 <span class="text-red-500">*</span></label>
+                            <select id="roomBuilding" required onchange="updateRoomFloorSelect()" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">楼层 <span class="text-red-500">*</span></label>
+                            <select id="roomFloor" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">房间类型 <span class="text-red-500">*</span></label>
+                            <select id="roomTypeSelect" required onchange="handleRoomTypeChange()" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                                <option value="办公室">办公室</option>
+                                <option value="会议室">会议室</option>
+                                <option value="实验室">实验室</option>
+                                <option value="机房">机房</option>
+                                <option value="储藏室">储藏室</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">房间名称 <span class="text-red-500">*</span></label>
+                        <input type="text" id="roomNameInput" required placeholder="例如：总经理办公室" 
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">房间排序</label>
+                        <input type="number" id="roomSort" min="1" placeholder="例如：1、2、3" 
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                    
+                    <!-- 动态属性字段容器 -->
+                    <div id="dynamicFields" class="space-y-4">
+                        <!-- 会议室：容纳人数 -->
+                        <div id="field-capacity" class="dynamic-field hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">容纳人数</label>
+                            <input type="number" id="roomCapacity" min="1" placeholder="例如：20" 
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                        </div>
+                        
+                        <!-- 办公室：办公人数 -->
+                        <div id="field-officeStaff" class="dynamic-field hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">办公人数</label>
+                            <input type="number" id="officeStaffCount" min="1" placeholder="例如：5" 
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                        </div>
+                        
+                        <!-- 实验室：安全等级 -->
+                        <div id="field-safetyLevel" class="dynamic-field hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">安全等级</label>
+                            <select id="safetyLevel" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                                <option value="一般">一般</option>
+                                <option value="中等">中等</option>
+                                <option value="高">高</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 机房：机柜数量、功率 -->
+                        <div id="field-serverRoom" class="dynamic-field hidden space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1.5">机柜数量</label>
+                                <input type="number" id="cabinetCount" min="1" placeholder="例如：10" 
+                                       class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1.5">功率负载 (kW)</label>
+                                <input type="number" id="powerLoad" min="1" step="0.1" placeholder="例如：50.5" 
+                                       class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            </div>
+                        </div>
+                        
+                        <!-- 储藏室：储物容量 -->
+                        <div id="field-storage" class="dynamic-field hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">储物容量 (m³)</label>
+                            <input type="number" id="storageCapacity" min="1" step="0.1" placeholder="例如：100.5" 
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 表单操作按钮 -->
+                <div class="flex gap-3 pt-4 border-t border-slate-100 mt-6">
+                    <button type="button" onclick="closeAddModal()" class="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors">
+                        取消
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-md">
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 批量导入模态框 -->
+    <div id="importModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg modal-enter overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800">批量导入房间</h3>
+                <button onclick="closeImportModal()" class="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-slate-500"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
+                        <div class="text-sm text-blue-800">
+                            <p class="font-medium mb-1">导入说明</p>
+                            <p class="text-blue-700">请上传 Excel 文件（.xlsx 或 .csv），文件需包含以下列：院区、楼幢、楼层、房间名称、房间类型、房间ID</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer" onclick="document.getElementById('importFile').click()">
+                    <input type="file" id="importFile" class="hidden" accept=".xlsx,.csv" onchange="handleFileSelect(this)">
+                    <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-cloud-upload-alt text-2xl text-slate-400"></i>
+                    </div>
+                    <p class="text-sm font-medium text-slate-700 mb-1">点击上传文件</p>
+                    <p class="text-xs text-slate-500">支持 .xlsx, .csv 格式，最大 10MB</p>
+                    <p id="selectedFileName" class="text-sm text-blue-600 mt-3 hidden"></p>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    <button onclick="downloadTemplate()" class="text-sm text-slate-600 hover:text-blue-600 flex items-center gap-2 transition-colors">
+                        <i class="fas fa-download"></i>
+                        <span>下载模板</span>
+                    </button>
+                </div>
+
+                <div class="flex gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeImportModal()" class="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors">
+                        取消
+                    </button>
+                    <button type="button" onclick="confirmImport()" class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" id="importBtn" disabled>
+                        开始导入
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑房间模态框 -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg modal-enter overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800">编辑房间</h3>
+                <button onclick="closeEditModal()" class="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-slate-500"></i>
+                </button>
+            </div>
+            <form id="editForm" onsubmit="saveEdit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editId">
+                
+                <!-- 只读字段：院区、楼幢、楼层、房间ID -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">院区</label>
+                        <input type="text" id="editCampus" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-500 font-mono text-sm cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">楼幢</label>
+                        <input type="text" id="editBuilding" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-500 font-mono text-sm cursor-not-allowed">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">楼层</label>
+                        <input type="text" id="editFloor" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-500 font-mono text-sm cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">房间类型 <span class="text-red-500">*</span></label>
+                        <select id="editRoomType" required onchange="handleEditRoomTypeChange()" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            <option value="办公室">办公室</option>
+                            <option value="会议室">会议室</option>
+                            <option value="实验室">实验室</option>
+                            <option value="机房">机房</option>
+                            <option value="储藏室">储藏室</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 可编辑字段：房间名称 -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">房间名称 <span class="text-red-500">*</span></label>
+                    <input type="text" id="editRoomName" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">房间排序</label>
+                    <input type="number" id="editRoomSort" min="1" placeholder="例如：1、2、3" 
+                           class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">房间ID</label>
+                    <input type="text" id="editRoomId" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-500 font-mono text-sm cursor-not-allowed">
+                </div>
+                
+                <!-- 动态属性字段 -->
+                <div id="editDynamicFields" class="space-y-4">
+                    <div id="edit-field-capacity" class="dynamic-field hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">容纳人数</label>
+                        <input type="number" id="editRoomCapacity" min="1" placeholder="例如：20" 
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                    
+                    <div id="edit-field-officeStaff" class="dynamic-field hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">办公人数</label>
+                        <input type="number" id="editOfficeStaffCount" min="1" placeholder="例如：5" 
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                    
+                    <div id="edit-field-safetyLevel" class="dynamic-field hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">安全等级</label>
+                        <select id="editSafetyLevel" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            <option value="一般">一般</option>
+                            <option value="中等">中等</option>
+                            <option value="高">高</option>
+                        </select>
+                    </div>
+                    
+                    <div id="edit-field-serverRoom" class="dynamic-field hidden space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">机柜数量</label>
+                            <input type="number" id="editCabinetCount" min="1" placeholder="例如：10" 
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5">功率负载 (kW)</label>
+                            <input type="number" id="editPowerLoad" min="1" step="0.1" placeholder="例如：50.5" 
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                        </div>
+                    </div>
+                    
+                    <div id="edit-field-storage" class="dynamic-field hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">储物容量 (m³)</label>
+                        <input type="number" id="editStorageCapacity" min="1" step="0.1" placeholder="例如：100.5" 
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 pt-4 border-t border-slate-100 mt-6">
+                    <button type="button" onclick="closeEditModal()" class="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors">
+                        取消
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-md">
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast 提示组件 -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i id="toastIcon" class="fas fa-check-circle text-green-400"></i>
+        <span id="toastMessage">操作成功</span>
+    </div>
+
+    <!-- JavaScript 功能实现 -->
+    <script>
+        // 数据存储
+        let campuses = ['主院区', '东院区', '西院区'];
+        let buildings = [
+            { id: 'A', name: 'A座', campus: '主院区', floors: ['1F', '2F', '3F', '4F', '5F'], sort: 1 },
+            { id: 'B', name: 'B座', campus: '主院区', floors: ['1F', '2F', '3F'], sort: 2 },
+            { id: 'C', name: 'C座', campus: '东院区', floors: ['1F', '2F', '3F'], sort: 3 }
+        ];
+        let rooms = [
+            { id: 1, campus: '主院区', building: 'A座', floor: '1F', name: '前台接待室', type: '办公室', roomId: 'RM-A-101', status: 'occupied', sort: 1, capacity: 5 },
+            { id: 2, campus: '主院区', building: 'A座', floor: '1F', name: '大会议室', type: '会议室', roomId: 'RM-A-102', status: 'available', sort: 2, capacity: 50 },
+            { id: 3, campus: '主院区', building: 'A座', floor: '2F', name: '总经理办公室', type: '办公室', roomId: 'RM-A-201', status: 'occupied', sort: 1, capacity: 3 },
+            { id: 4, campus: '主院区', building: 'A座', floor: '2F', name: '财务室', type: '办公室', roomId: 'RM-A-202', status: 'occupied', sort: 2, capacity: 4 },
+            { id: 5, campus: '主院区', building: 'B座', floor: '1F', name: '中心机房', type: '机房', roomId: 'RM-B-101', status: 'maintenance', sort: 1, cabinetCount: 20, powerLoad: 100.5 },
+            { id: 6, campus: '主院区', building: 'B座', floor: '2F', name: '研发实验室A', type: '实验室', roomId: 'RM-B-201', status: 'occupied', sort: 1, safetyLevel: '高' },
+            { id: 7, campus: '主院区', building: 'B座', floor: '3F', name: '多功能厅', type: '会议室', roomId: 'RM-B-301', status: 'available', sort: 1, capacity: 100 },
+            { id: 8, campus: '东院区', building: 'C座', floor: '1F', name: '档案室', type: '储藏室', roomId: 'RM-C-101', status: 'available', sort: 1, storageCapacity: 200.5 },
+            { id: 9, campus: '东院区', building: 'C座', floor: '2F', name: '培训教室', type: '会议室', roomId: 'RM-C-201', status: 'occupied', sort: 1, capacity: 30 },
+            { id: 10, campus: '东院区', building: 'C座', floor: '3F', name: '化学实验室', type: '实验室', roomId: 'RM-C-301', status: 'occupied', sort: 1, safetyLevel: '高' },
+            { id: 11, campus: '主院区', building: 'A座', floor: '3F', name: '牙科诊室1', type: '办公室', roomId: 'RM-A-301', status: 'available', sort: 1, dentalChair: 2 },
+            { id: 12, campus: '主院区', building: 'A座', floor: '3F', name: '牙科诊室2', type: '办公室', roomId: 'RM-A-302', status: 'occupied', sort: 2, dentalChair: 3 },
+            { id: 13, campus: '东院区', building: 'C座', floor: '1F', name: '口腔治疗室', type: '实验室', roomId: 'RM-C-102', status: 'available', sort: 2, dentalChair: 4 },
+            { id: 14, campus: '主院区', building: 'B座', floor: '2F', name: '牙科手术室', type: '办公室', roomId: 'RM-B-202', status: 'maintenance', sort: 2, dentalChair: 3 }
+        ];
+
+        // 分页和状态管理
+        let currentPage = 1;
+        const itemsPerPage = 8;
+        let editingId = null;
+        let selectedImportFile = null;
+
+        // 状态配置
+        const statusConfig = {
+            occupied: { label: '使用中', class: 'bg-blue-100 text-blue-700 border-blue-200', icon: 'fa-user' },
+            available: { label: '空闲', class: 'bg-green-100 text-green-700 border-green-200', icon: 'fa-check' },
+            maintenance: { label: '维护中', class: 'bg-amber-100 text-amber-700 border-amber-200', icon: 'fa-wrench' },
+            reserved: { label: '已预约', class: 'bg-purple-100 text-purple-700 border-purple-200', icon: 'fa-clock' }
+        };
+
+        // 房间类型图标
+        const typeIcons = {
+            '办公室': 'fa-briefcase',
+            '会议室': 'fa-users',
+            '实验室': 'fa-flask',
+            '机房': 'fa-server',
+            '储藏室': 'fa-box'
+        };
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initializePage();
+        });
+
+        function initializePage() {
+            renderTable();
+            updateStats();
+            initBuildingFilter();
+            initFloorFilter();
+            updateBuildingSelect();
+            updateRoomBuildingSelect();
+            
+            // 模态框点击外部关闭
+            setupModalCloseHandlers();
+        }
+
+        function setupModalCloseHandlers() {
+            const modals = ['addModal', 'editModal', 'importModal'];
+            modals.forEach(modalId => {
+                document.getElementById(modalId).addEventListener('click', (e) => {
+                    if (e.target === e.currentTarget) {
+                        switch(modalId) {
+                            case 'addModal': closeAddModal(); break;
+                            case 'editModal': closeEditModal(); break;
+                            case 'importModal': closeImportModal(); break;
+                        }
+                    }
+                });
+            });
+        }
+
+        // 筛选器初始化
+        function initBuildingFilter() {
+            const select = document.getElementById('buildingFilter');
+            select.innerHTML = '<option value="">所有楼幢</option>';
+            buildings.forEach(b => {
+                const option = document.createElement('option');
+                option.value = b.name;
+                option.textContent = b.name;
+                select.appendChild(option);
+            });
+        }
+
+        function initFloorFilter() {
+            updateFloorFilterOptions();
+        }
+
+        function updateFloorFilterOptions() {
+            const floorSelect = document.getElementById('floorFilter');
+            const currentVal = floorSelect.value;
+            
+            const allFloors = new Set();
+            rooms.forEach(r => {
+                if (r.floor) allFloors.add(r.floor);
+            });
+            
+            const sortedFloors = Array.from(allFloors).sort((a, b) => {
+                const aNum = parseInt(a);
+                const bNum = parseInt(b);
+                if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+                return a.localeCompare(b);
+            });
+            
+            floorSelect.innerHTML = '<option value="">所有楼层</option>';
+            sortedFloors.forEach(f => {
+                const option = document.createElement('option');
+                option.value = f;
+                option.textContent = f;
+                floorSelect.appendChild(option);
+            });
+            
+            if (currentVal && sortedFloors.includes(currentVal)) {
+                floorSelect.value = currentVal;
+            }
+        }
+
+        // 统计数据更新
+        function updateStats() {
+            // 总楼幢数
+            document.getElementById('totalBuildings').textContent = buildings.length;
+            
+            // 总楼层数（计算所有building的floors数组长度总和）
+            const totalFloors = buildings.reduce((sum, b) => sum + (b.floors ? b.floors.length : 0), 0);
+            document.getElementById('totalFloors').textContent = totalFloors;
+            
+            // 总房间数
+            document.getElementById('totalRooms').textContent = rooms.length;
+            
+            // 总牙椅位数（计算所有房间的dentalChair属性总和，默认为0）
+            const totalDentalChairs = rooms.reduce((sum, r) => sum + (r.dentalChair || 0), 0);
+            document.getElementById('totalDentalChairs').textContent = totalDentalChairs;
+        }
+
+        // 表格渲染 - 修改：移除删除按钮
+        function renderTable() {
+            const filtered = getFilteredData();
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageData = filtered.slice(start, end);
+            
+            const tbody = document.getElementById('roomTableBody');
+            tbody.innerHTML = '';
+
+            pageData.forEach(room => {
+                const typeIcon = typeIcons[room.type] || 'fa-door-open';
+                
+                const row = document.createElement('tr');
+                row.className = 'table-row-hover bg-white transition-all duration-200 group';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
+                            <span class="text-sm font-medium text-slate-900">${room.campus}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${room.building}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                            ${room.floor}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mr-3 text-slate-600">
+                                <i class="fas ${typeIcon} text-sm"></i>
+                            </div>
+                            <span class="text-sm font-medium text-slate-900">${room.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${room.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <code class="text-xs font-mono bg-slate-50 px-2 py-1 rounded text-slate-600 border border-slate-200">${room.roomId}</code>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                        <div class="action-buttons">
+                            <!-- 修改：移除删除按钮，只保留编辑和查看 -->
+                            <button onclick="editRoom(${room.id})" class="action-btn bg-blue-50 text-blue-600 hover:bg-blue-100" title="编辑">
+                                <i class="fas fa-edit text-sm"></i>
+                            </button>
+                            <button onclick="viewRoom(${room.id})" class="action-btn bg-slate-50 text-slate-600 hover:bg-slate-100" title="查看">
+                                <i class="fas fa-eye text-sm"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('showingStart').textContent = filtered.length > 0 ? start + 1 : 0;
+            document.getElementById('showingEnd').textContent = Math.min(end, filtered.length);
+            document.getElementById('totalCount').textContent = filtered.length;
+            
+            renderPagination(filtered.length);
+        }
+
+        // 数据筛选
+        function getFilteredData() {
+            const campus = document.getElementById('campusFilter').value;
+            const building = document.getElementById('buildingFilter').value;
+            const floor = document.getElementById('floorFilter').value;
+            const type = document.getElementById('typeFilter').value;
+            const search = document.getElementById('searchInput').value.toLowerCase();
+
+            return rooms.filter(room => {
+                const matchCampus = !campus || room.campus === campus;
+                const matchBuilding = !building || room.building === building;
+                const matchFloor = !floor || room.floor === floor;
+                const matchType = !type || room.type === type;
+                const matchSearch = !search || 
+                    room.name.toLowerCase().includes(search) || 
+                    room.roomId.toLowerCase().includes(search);
+                return matchCampus && matchBuilding && matchFloor && matchType && matchSearch;
+            });
+        }
+
+        // 分页渲染
+        function renderPagination(total) {
+            const totalPages = Math.ceil(total / itemsPerPage);
+            const container = document.getElementById('paginationNumbers');
+            container.innerHTML = '';
+
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages || totalPages === 0;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    const btn = document.createElement('button');
+                    btn.className = `w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                        i === currentPage 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`;
+                    btn.textContent = i;
+                    btn.onclick = () => { currentPage = i; renderTable(); };
+                    container.appendChild(btn);
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    const span = document.createElement('span');
+                    span.className = 'px-2 text-slate-400';
+                    span.textContent = '...';
+                    container.appendChild(span);
+                }
+            }
+        }
+
+        // 数据筛选处理
+        function filterData() {
+            currentPage = 1;
+            renderTable();
+        }
+
+        function changePage(delta) {
+            const totalPages = Math.ceil(getFilteredData().length / itemsPerPage);
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                renderTable();
+            }
+        }
+
+        // 批量导入功能
+        function openImportModal() {
+            document.getElementById('importModal').classList.remove('hidden');
+            selectedImportFile = null;
+            document.getElementById('selectedFileName').classList.add('hidden');
+            document.getElementById('importBtn').disabled = true;
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.add('hidden');
+            selectedImportFile = null;
+            document.getElementById('importFile').value = '';
+        }
+
+        function handleFileSelect(input) {
+            if (input.files && input.files[0]) {
+                selectedImportFile = input.files[0];
+                const fileNameDisplay = document.getElementById('selectedFileName');
+                fileNameDisplay.textContent = `已选择：${selectedImportFile.name}`;
+                fileNameDisplay.classList.remove('hidden');
+                document.getElementById('importBtn').disabled = false;
+            }
+        }
+
+        function downloadTemplate() {
+            showToast('模板下载成功', 'success');
+        }
+
+        function confirmImport() {
+            if (!selectedImportFile) return;
+            showToast('正在导入数据...', 'info');
+            
+            setTimeout(() => {
+                const newRooms = [
+                    { id: rooms.length + 1, campus: '主院区', building: 'A座', floor: '1F', name: '批量导入房间1', type: '办公室', roomId: `RM-IMPORT-${rooms.length + 1}`, status: 'available', sort: 1 },
+                    { id: rooms.length + 2, campus: '主院区', building: 'A座', floor: '1F', name: '批量导入房间2', type: '会议室', roomId: `RM-IMPORT-${rooms.length + 2}`, status: 'available', sort: 2 }
+                ];
+                rooms.unshift(...newRooms);
+                
+                updateStats();
+                updateFloorFilterOptions();
+                renderTable();
+                showToast(`成功导入 ${newRooms.length} 个房间`, 'success');
+                closeImportModal();
+            }, 1500);
+        }
+
+        // 新增功能模态框
+        function openModal(type) {
+            document.getElementById('addModal').classList.remove('hidden');
+            switchAddType(type);
+            if (type === 'room') {
+                handleRoomTypeChange();
+            }
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.add('hidden');
+            document.getElementById('addForm').reset();
+            hideAllDynamicFields();
+        }
+
+        function hideAllDynamicFields() {
+            const fields = ['field-capacity', 'field-officeStaff', 'field-safetyLevel', 'field-serverRoom', 'field-storage'];
+            fields.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+        }
+
+        function switchAddType(type) {
+            ['building', 'floor', 'room'].forEach(t => {
+                const tab = document.getElementById(`tab-${t}`);
+                const form = document.getElementById(`form-${t}`);
+                if (t === type) {
+                    tab.classList.remove('tab-inactive');
+                    tab.classList.add('tab-active');
+                    form.classList.remove('hidden');
+                } else {
+                    tab.classList.remove('tab-active');
+                    tab.classList.add('tab-inactive');
+                    form.classList.add('hidden');
+                }
+            });
+            
+            document.getElementById('addType').value = type;
+            
+            const titles = {
+                'building': '新增楼幢',
+                'floor': '新增楼层',
+                'room': '新增房间'
+            };
+            document.getElementById('addModalTitle').textContent = titles[type];
+        }
+
+        // 房间类型变化处理
+        function handleRoomTypeChange() {
+            const roomType = document.getElementById('roomTypeSelect').value;
+            hideAllDynamicFields();
+            
+            switch(roomType) {
+                case '会议室':
+                    document.getElementById('field-capacity').classList.remove('hidden');
+                    break;
+                case '办公室':
+                    document.getElementById('field-officeStaff').classList.remove('hidden');
+                    break;
+                case '实验室':
+                    document.getElementById('field-safetyLevel').classList.remove('hidden');
+                    break;
+                case '机房':
+                    document.getElementById('field-serverRoom').classList.remove('hidden');
+                    break;
+                case '储藏室':
+                    document.getElementById('field-storage').classList.remove('hidden');
+                    break;
+            }
+        }
+
+        // 表单提交处理
+        function saveAdd(e) {
+            e.preventDefault();
+            const type = document.getElementById('addType').value;
+            
+            if (type === 'building') {
+                saveBuilding();
+            } else if (type === 'floor') {
+                saveFloor();
+            } else if (type === 'room') {
+                saveRoom();
+            }
+            
+            closeAddModal();
+            renderTable();
+        }
+
+        function saveBuilding() {
+            const campus = document.getElementById('buildingCampus').value;
+            const name = document.getElementById('buildingName').value;
+            const sort = parseInt(document.getElementById('buildingSort').value) || buildings.length + 1;
+            const id = name.charAt(0).toUpperCase();
+            
+            buildings.push({ id, name, campus, floors: [], sort });
+            buildings.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+            
+            initBuildingFilter();
+            handleCampusFilterChange();
+            updateStats();
+            showToast(`楼幢 "${name}" 创建成功`, 'success');
+        }
+
+        function saveFloor() {
+            const campus = document.getElementById('floorCampus').value;
+            const buildingName = document.getElementById('floorBuilding').value;
+            const name = document.getElementById('floorName').value;
+            const sort = parseInt(document.getElementById('floorSort').value) || 1;
+            
+            const building = buildings.find(b => b.name === buildingName && b.campus === campus);
+            if (building) {
+                if (!building.floors.includes(name)) {
+                    building.floors.push(name);
+                    building.floors.sort((a, b) => {
+                        const aNum = parseInt(a);
+                        const bNum = parseInt(b);
+                        if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+                        return a.localeCompare(b);
+                    });
+                    updateFloorFilterOptions();
+                    updateStats(); // 更新统计（总楼层数可能变化）
+                    showToast(`楼层 "${name}" 添加到 ${buildingName} 成功`, 'success');
+                } else {
+                    showToast('该楼层已存在', 'error');
+                }
+            }
+        }
+
+        function saveRoom() {
+            const newId = Math.max(...rooms.map(r => r.id), 0) + 1;
+            const roomType = document.getElementById('roomTypeSelect').value;
+            
+            const roomData = {
+                id: newId,
+                campus: document.getElementById('roomCampus').value,
+                building: document.getElementById('roomBuilding').value,
+                floor: document.getElementById('roomFloor').value,
+                type: roomType,
+                name: document.getElementById('roomNameInput').value,
+                roomId: `RM-${new Date().getFullYear()}-${String(newId).padStart(4, '0')}`,
+                status: 'available',
+                sort: parseInt(document.getElementById('roomSort').value) || 1
+            };
+            
+            // 添加动态属性
+            switch(roomType) {
+                case '会议室':
+                    roomData.capacity = parseInt(document.getElementById('roomCapacity').value) || 0;
+                    break;
+                case '办公室':
+                    roomData.capacity = parseInt(document.getElementById('officeStaffCount').value) || 0;
+                    break;
+                case '实验室':
+                    roomData.safetyLevel = document.getElementById('safetyLevel').value || '一般';
+                    break;
+                case '机房':
+                    roomData.cabinetCount = parseInt(document.getElementById('cabinetCount').value) || 0;
+                    roomData.powerLoad = parseFloat(document.getElementById('powerLoad').value) || 0;
+                    break;
+                case '储藏室':
+                    roomData.storageCapacity = parseFloat(document.getElementById('storageCapacity').value) || 0;
+                    break;
+            }
+            
+            rooms.unshift(roomData);
+            updateStats();
+            updateFloorFilterOptions();
+            renderTable();
+            showToast(`房间 "${roomData.name}" 创建成功`, 'success');
+        }
+
+        // 编辑功能
+        function editRoom(id) {
+            const room = rooms.find(r => r.id === id);
+            if (!room) return;
+
+            editingId = id;
+            
+            document.getElementById('editId').value = id;
+            
+            // 设置只读字段的值
+            document.getElementById('editCampus').value = room.campus;
+            document.getElementById('editBuilding').value = room.building;
+            document.getElementById('editFloor').value = room.floor;
+            document.getElementById('editRoomId').value = room.roomId;
+            
+            // 设置可编辑字段的值
+            document.getElementById('editRoomName').value = room.name;
+            document.getElementById('editRoomSort').value = room.sort || 1; // 加载房间排序
+            document.getElementById('editRoomType').value = room.type;
+            
+            // 显示并填充动态字段
+            showEditDynamicFields(room);
+            
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            editingId = null;
+        }
+
+        function handleEditRoomTypeChange() {
+            const roomType = document.getElementById('editRoomType').value;
+            const room = rooms.find(r => r.id === editingId);
+            if (!room) return;
+            
+            // 显示对应类型的动态字段（不填充数据，让用户重新输入）
+            showEditDynamicFields({ type: roomType });
+        }
+
+        function showEditDynamicFields(room) {
+            // 先隐藏所有动态字段
+            const fields = ['edit-field-capacity', 'edit-field-officeStaff', 'edit-field-safetyLevel', 'edit-field-serverRoom', 'edit-field-storage'];
+            fields.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            
+            // 根据房间类型显示对应字段并填充值
+            switch(room.type) {
+                case '会议室':
+                    document.getElementById('edit-field-capacity').classList.remove('hidden');
+                    document.getElementById('editRoomCapacity').value = room.capacity || '';
+                    break;
+                case '办公室':
+                    document.getElementById('edit-field-officeStaff').classList.remove('hidden');
+                    document.getElementById('editOfficeStaffCount').value = room.capacity || '';
+                    break;
+                case '实验室':
+                    document.getElementById('edit-field-safetyLevel').classList.remove('hidden');
+                    document.getElementById('editSafetyLevel').value = room.safetyLevel || '一般';
+                    break;
+                case '机房':
+                    document.getElementById('edit-field-serverRoom').classList.remove('hidden');
+                    document.getElementById('editCabinetCount').value = room.cabinetCount || '';
+                    document.getElementById('editPowerLoad').value = room.powerLoad || '';
+                    break;
+                case '储藏室':
+                    document.getElementById('edit-field-storage').classList.remove('hidden');
+                    document.getElementById('editStorageCapacity').value = room.storageCapacity || '';
+                    break;
+            }
+        }
+
+        function saveEdit(e) {
+            e.preventDefault();
+            
+            const id = parseInt(document.getElementById('editId').value);
+            const index = rooms.findIndex(r => r.id === id);
+            
+            if (index !== -1) {
+                const oldType = rooms[index].type;
+                const newType = document.getElementById('editRoomType').value;
+                
+                // 更新基础信息
+                rooms[index].name = document.getElementById('editRoomName').value;
+                rooms[index].sort = parseInt(document.getElementById('editRoomSort').value) || 1; // 保存房间排序
+                rooms[index].type = newType;
+                
+                // 如果类型改变，清除旧类型的属性
+                if (oldType !== newType) {
+                    // 清除旧属性
+                    delete rooms[index].capacity;
+                    delete rooms[index].safetyLevel;
+                    delete rooms[index].cabinetCount;
+                    delete rooms[index].powerLoad;
+                    delete rooms[index].storageCapacity;
+                }
+                
+                // 根据新类型设置属性
+                switch(newType) {
+                    case '会议室':
+                        rooms[index].capacity = parseInt(document.getElementById('editRoomCapacity').value) || 0;
+                        break;
+                    case '办公室':
+                        rooms[index].capacity = parseInt(document.getElementById('editOfficeStaffCount').value) || 0;
+                        break;
+                    case '实验室':
+                        rooms[index].safetyLevel = document.getElementById('editSafetyLevel').value || '一般';
+                        break;
+                    case '机房':
+                        rooms[index].cabinetCount = parseInt(document.getElementById('editCabinetCount').value) || 0;
+                        rooms[index].powerLoad = parseFloat(document.getElementById('editPowerLoad').value) || 0;
+                        break;
+                    case '储藏室':
+                        rooms[index].storageCapacity = parseFloat(document.getElementById('editStorageCapacity').value) || 0;
+                        break;
+                }
+                
+                showToast('房间信息已更新', 'success');
+                closeEditModal();
+                renderTable();
+            }
+        }
+
+        // 工具函数
+        function viewRoom(id) {
+            const room = rooms.find(r => r.id === id);
+            showToast(`查看房间: ${room.name} (${room.roomId})`, 'info');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+            
+            msg.textContent = message;
+            
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle text-green-400';
+            } else if (type === 'error') {
+                icon.className = 'fas fa-times-circle text-red-400';
+            } else {
+                icon.className = 'fas fa-info-circle text-blue-400';
+            }
+            
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // 下拉数据更新
+        function updateBuildingSelect() {
+            const campus = document.getElementById('floorCampus').value;
+            const select = document.getElementById('floorBuilding');
+            select.innerHTML = '';
+            
+            const campusBuildings = buildings.filter(b => b.campus === campus);
+            campusBuildings.forEach(b => {
+                const option = document.createElement('option');
+                option.value = b.name;
+                option.textContent = b.name;
+                select.appendChild(option);
+            });
+        }
+
+        function updateRoomBuildingSelect() {
+            const campus = document.getElementById('roomCampus').value;
+            const select = document.getElementById('roomBuilding');
+            select.innerHTML = '';
+            
+            const campusBuildings = buildings.filter(b => b.campus === campus);
+            campusBuildings.forEach(b => {
+                const option = document.createElement('option');
+                option.value = b.name;
+                option.textContent = b.name;
+                select.appendChild(option);
+            });
+            
+            updateRoomFloorSelect();
+        }
+
+        function updateRoomFloorSelect() {
+            const buildingName = document.getElementById('roomBuilding').value;
+            const select = document.getElementById('roomFloor');
+            select.innerHTML = '';
+            
+            const building = buildings.find(b => b.name === buildingName);
+            if (building) {
+                building.floors.forEach(f => {
+                    const option = document.createElement('option');
+                    option.value = f;
+                    option.textContent = f;
+                    select.appendChild(option);
+                });
+            }
+        }
+
+        // 院区筛选变化处理
+        function handleCampusFilterChange() {
+            const campus = document.getElementById('campusFilter').value;
+            const buildingSelect = document.getElementById('buildingFilter');
+            
+            buildingSelect.innerHTML = '<option value="">所有楼幢</option>';
+            if (campus) {
+                const campusBuildings = buildings.filter(b => b.campus === campus);
+                campusBuildings.forEach(b => {
+                    const option = document.createElement('option');
+                    option.value = b.name;
+                    option.textContent = b.name;
+                    buildingSelect.appendChild(option);
+                });
+            } else {
+                buildings.forEach(b => {
+                    const option = document.createElement('option');
+                    option.value = b.name;
+                    option.textContent = b.name;
+                    buildingSelect.appendChild(option);
+                });
+            }
+            
+            document.getElementById('floorFilter').value = '';
+            filterData();
+        }
+
+        function handleBuildingFilterChange() {
+            const campus = document.getElementById('campusFilter').value;
+            const building = document.getElementById('buildingFilter').value;
+            
+            const floorSelect = document.getElementById('floorFilter');
+            const currentFloor = floorSelect.value;
+            
+            const availableFloors = new Set();
+            rooms.forEach(r => {
+                let match = true;
+                if (campus && r.campus !== campus) match = false;
+                if (building && r.building !== building) match = false;
+                if (match && r.floor) availableFloors.add(r.floor);
+            });
+            
+            const sortedFloors = Array.from(availableFloors).sort((a, b) => {
+                const aNum = parseInt(a);
+                const bNum = parseInt(b);
+                if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+                return a.localeCompare(b);
+            });
+            
+            floorSelect.innerHTML = '<option value="">所有楼层</option>';
+            sortedFloors.forEach(f => {
+                const option = document.createElement('option');
+                option.value = f;
+                option.textContent = f;
+                floorSelect.appendChild(option);
+            });
+            
+            if (currentFloor && availableFloors.has(currentFloor)) {
+                floorSelect.value = currentFloor;
+            }
+            
+            filterData();
+        }
+    </script>
+</body>
+</html>
